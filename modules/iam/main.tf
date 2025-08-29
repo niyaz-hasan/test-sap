@@ -24,13 +24,13 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
-#########################
-# Inline Policy - S3 
-#########################
+
+######################################### Inline Policy - S3 ###############################################################
+
 
 resource "aws_iam_policy" "this" {
   name        = "${var.role_name}-policy"
-  description = "Custom policy for Glue to access S3 and Athena"
+  description = "Custom policy for Glue to access S3"
   policy      = data.aws_iam_policy_document.custom.json
 }
 

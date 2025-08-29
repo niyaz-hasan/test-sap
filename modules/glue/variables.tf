@@ -11,7 +11,7 @@ description = "IAM role ARN for Glue crawlers."
 
 
 variable "bucket_mapping" {
-type = map(string)
+type = list(string)
 description = "Mapping of database_name => bucket_name."
 }
 

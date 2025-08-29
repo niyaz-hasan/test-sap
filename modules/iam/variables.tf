@@ -5,7 +5,7 @@ variable "role_name" {
 
 variable "bucket_name" {
   description = "S3 bucket name Glue should access"
-  type        = string
+  type        = list(string)
 }
 
 variable "tags" {
