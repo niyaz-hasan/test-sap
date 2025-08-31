@@ -1,7 +1,7 @@
 variable "athena_workgroup_name" {
   description = "Athena Workgroup name"
   type        = string
-  default     = "primary"
+  default     = "test"
 }
 
 variable "bucket_name" {
