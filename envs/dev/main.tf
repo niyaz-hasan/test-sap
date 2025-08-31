@@ -7,7 +7,7 @@ module "data_lake_buckets" {
 }
 
 module "iam_role" {
-  source = "../../moduels/iam"
+  source = "../../modules/iam"
   bucket_names = var.bucket_names
   tags = var.tags
 }
