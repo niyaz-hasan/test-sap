@@ -21,7 +21,7 @@ description = "Tags to apply to resources."
 
 variable "role_name" {
   type = string
-  default = {}
+  description = "IAM role name."
 }
 
 variable "region" {
