@@ -6,7 +6,7 @@ resource "aws_athena_workgroup" "this" {
     publish_cloudwatch_metrics_enabled = true
 
     result_configuration {
-      output_location = "s3://${aws_s3_bucket.this.bucket}/athena-results/"
+      output_location = "s3://${bucket_name}/athena-results/"
     }
   }
 
