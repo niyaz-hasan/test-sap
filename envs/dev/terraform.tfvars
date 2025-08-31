@@ -1,8 +1,8 @@
 region          = "us-east-1"
 
-bucket_names    = ["dev-bkt-a", "dev-bkt-b", "dev-bkt-c", "dev-bkt-d", "dev-bkt-e", "dev-bkt-f", "dev-bkt-g"]
+bucket_names    = ["dev-bkt-a", "dev-bkt-b"]
 
-database_names  = ["dev-db-a", "dev-db-b", "dev-db-c", "dev-db-d", "dev-db-e", "dev-db-f", "dev-db-g"]
+database_names  = ["dev-db-a", "dev-db-b"]
 
 athena_workgroup = "primary"
 
