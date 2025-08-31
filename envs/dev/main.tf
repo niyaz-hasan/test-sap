@@ -21,9 +21,9 @@ module "glue_catalogs" {
 }
 
 
-#module "athena" {
-#  source = "../../modules/athena"
-#  database_names = var.database_names
-#  bucket_name = module.data_lake_buckets.bucket_names["athena-output-qc"]
-#  sample_query = "SELECT 1 as test;"
-#}
+module "athena" {
+  source = "../../modules/athena"
+  database_names = var.database_names
+  bucket_name = module.data_lake_buckets.bucket_names[0]
+  sample_query = "SELECT 1 as test;"
+}
