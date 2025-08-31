@@ -19,7 +19,12 @@ default = {}
 description = "Tags to apply to resources."
 }
 
-variable "aws_region" {
+variable "role_name" {
+  type = string
+  default = {}
+}
+
+variable "region" {
 type = string
 default = "us-east-1"
 }

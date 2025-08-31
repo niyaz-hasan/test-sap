@@ -3,7 +3,7 @@
 locals {
   db_bucket_map = {
     for idx, db_name in var.database_names :
-    db_name => var.bucket_names[idx]
+    db_name => var.bucket_mapping[idx]
   }
 }
 
