@@ -1,3 +1,3 @@
 output "glue_databases" {
-  value = aws_glue_catalog_database.db[*].name
+  value = [for db in aws_glue_catalog_database.db : db.name]
 }

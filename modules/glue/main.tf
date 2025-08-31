@@ -1,22 +1,19 @@
-# Convert database_names and bucket_names into a map for for_each
+######################## locals ########################
+# Create a map from database_name => bucket_name
 locals {
-  db_map = {
+  db_bucket_map = {
     for idx, db_name in var.database_names :
-    db_name => {
-      name   = db_name
-      bucket = var.bucket_names[idx]
-    }
+    db_name => var.bucket_names[idx]
   }
 }
-
 
 ################################### glue catalog database #########################################################
 
 resource "aws_glue_catalog_database" "db" {
-  for_each = local.db_map
+  for_each = toset(var.database_names)
 
-  name        = each.value.name
-  description = "Glue DB for ${each.value.name}"
+  name        = each.value
+  description = "Glue DB for ${each.value}"
   parameters  = var.parameters
 }
 
@@ -24,12 +21,13 @@ resource "aws_glue_catalog_database" "db" {
 ################################# glue crawler #########################################################################
 
 resource "aws_glue_crawler" "crawler" {
-  for_each     = local.db_map
-  name         = "${each.value.name}-crawler"
+  for_each = local.db_bucket_map
+
+  name          = "${each.key}-crawler"
   database_name = aws_glue_catalog_database.db[each.key].name
   role          = var.iam_role_arn
 
   s3_target {
-    path = "s3://${each.value.bucket}/"
+    path = "s3://${each.value}/"
   }
 }

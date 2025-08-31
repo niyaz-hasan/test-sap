@@ -14,7 +14,7 @@ locals {
 resource "aws_s3_bucket" "data_lake" {
   for_each = toset(var.bucket_names)
 
-  bucket = each.value
+  bucket = each.value-qc
   acl    = "private"
 
   server_side_encryption_configuration {

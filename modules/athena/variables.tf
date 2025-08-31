@@ -4,6 +4,12 @@ variable "athena_workgroup_name" {
   default     = "primary"
 }
 
+variable "bucket_name" {
+  description = "Antena output logs"
+  type        = string 
+}
+
+
 variable "tags" {
   description = "Common tags"
   type        = map(string)
