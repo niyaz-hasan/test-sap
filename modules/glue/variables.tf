@@ -16,8 +16,8 @@ description = "Mapping of database_name => bucket_name."
 }
 
 
-variable "parameters" {
-type = map(string)
-default = {}
-description = "Additional parameters for Glue databases."
-}
+#variable "parameters" {
+#type = map(string)
+#default = {}
+#description = "Additional parameters for Glue databases."
+#}

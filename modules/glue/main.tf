@@ -14,7 +14,7 @@ resource "aws_glue_catalog_database" "db" {
 
   name        = each.value
   description = "Glue DB for ${each.value}"
-  parameters  = var.parameters
+#  parameters  = var.parameters
 }
 
 
