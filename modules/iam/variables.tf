@@ -3,7 +3,7 @@ variable "role_name" {
   type        = string
 }
 
-variable "bucket_name" {
+variable "bucket_names" {
   description = "S3 bucket name Glue should access"
   type        = list(string)
 }

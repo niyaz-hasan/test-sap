@@ -6,6 +6,8 @@ database_names  = ["dev-db-a", "dev-db-b", "dev-db-c", "dev-db-d", "dev-db-e", "
 
 athena_workgroup = "primary"
 
+role_name = "glue-role-sap"
+
 tags = {
   env   = "dev"
 }

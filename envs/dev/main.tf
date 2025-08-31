@@ -8,7 +8,8 @@ module "data_lake_buckets" {
 
 module "iam_role" {
   source = "../../modules/iam"
-  bucket_names = var.bucket_names
+  bucket_names = module.data_lake_buckets.bucket_names
+  role_name    = var.role_name
   tags = var.tags
 }
 
@@ -16,7 +17,7 @@ module "glue_catalogs" {
   source = "../../modules/glue"
   database_names = var.database_names # list of 7 db names
   iam_role_arn = module.iam_role.glue_role_arn
-  bucket_mapping = var.bucket_names
+  bucket_mapping = module.data_lake_buckets.bucket_names
 }
 
 
