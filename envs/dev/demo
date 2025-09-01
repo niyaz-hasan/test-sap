@@ -81,7 +81,3 @@ jobs:
       - name: Terraform Plan
         run: terraform -chdir=$TF_WORKING_DIR plan -out=tfplan
 
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform -chdir=$TF_WORKING_DIR apply -auto-approve tfplan
-
