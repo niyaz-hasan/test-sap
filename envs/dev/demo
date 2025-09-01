@@ -32,3 +32,56 @@ resource "aws_glue_crawler" "crawler" {
     path = "s3://${each.value.bucket}/"
   }
 }
+
+################################################################# terraform #################################################
+name: Terraform Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  terraform:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write   # for OIDC auth
+      contents: read
+
+    env:
+      TF_WORKING_DIR: ./envs/dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      # Authenticate with AWS using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/GithubActionsTerraformRole
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform -chdir=$TF_WORKING_DIR init
+
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform -chdir=$TF_WORKING_DIR validate
+
+      - name: Terraform Plan
+        run: terraform -chdir=$TF_WORKING_DIR plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform -chdir=$TF_WORKING_DIR apply -auto-approve tfplan
+
