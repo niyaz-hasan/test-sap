@@ -1,0 +1,18 @@
+variable "db_names" {
+  default = ["db_gd_niyaz", "db_gd_test", "qc_grz_metadata", "qc_grz_db"]
+}
+
+locals {
+  db_map = {
+    for n in var.db_names : n => {
+      prefix = startswith(n, "db_") ? "crw_bay_gda" : "qc_grc"
+      suffix = reverse(split("_", n))[0]
+    }
+  }
+}
+
+resource "aws_glue_crawler" "crawler" {
+  for_each = local.db_map
+
+  name = "${each.value.prefix}_${each.value.suffix}-dev"
+}
