@@ -81,3 +81,46 @@ jobs:
       - name: Terraform Plan
         run: terraform -chdir=$TF_WORKING_DIR plan -out=tfplan
 
+######################################################################################
+# 📊 AWS Serverless Data Pipeline with Terraform
+
+This repository provisions a modular, serverless data pipeline using **Amazon S3**, **AWS Glue**, and **Amazon Athena**. It enables scalable ETL workflows and SQL-based analytics on structured and semi-structured data.
+
+---
+
+## 📐 Architecture Overview
+
+
+---
+
+## 📦 Modules
+
+- `s3/`: Creates buckets for raw and processed data.
+- `glue/`: Provisions Glue crawlers, jobs, and catalog databases.
+- `athena/`: Sets up Athena workgroups and query configurations.
+
+---
+
+## ⚙️ Features
+
+- Modular Terraform design with `for_each` and `count` for safe resource management
+- Cross-module output referencing for clean dependency mapping
+- IAM roles scoped for least privilege access
+- Future-proofed for multi-environment deployment
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Terraform ≥ 1.0
+- AWS CLI configured
+- IAM permissions for Glue, S3, Athena
+
+### Deployment
+
+```bash
+terraform init
+terraform plan
+terraform apply
