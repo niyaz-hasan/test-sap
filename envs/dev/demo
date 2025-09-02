@@ -124,3 +124,13 @@ This repository provisions a modular, serverless data pipeline using **Amazon S3
 terraform init
 terraform plan
 terraform apply
+
+###########################################################################
+tags = {
+  environment     = "dev"
+  project         = "sap-data-pipeline"
+  owner           = "niyaz.hasan"
+  cost_center     = "data-eng-001"
+  terraform_managed = "true"
+}
+
