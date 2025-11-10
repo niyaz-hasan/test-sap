@@ -1,0 +1,504 @@
+Nice — I’ll create a complete, ready-to-paste Confluence documentation blueprint for the repo you’re showing (the “Bayer CH Supply Chain Agents - CMO Purchase Order Automation POC”). It includes a page structure, page templates, recommended macros, sample content (converted from your README screenshots), a Page Properties metadata block you can reuse, a Lambdas table, architecture & workflow diagrams guidance, and a short checklist for publishing and maintenance.
+
+You can paste the markdown below into a Confluence page (or convert to Confluence editor blocks). I label which parts are page content vs. templates vs. admin tasks so you can quickly build the documentation site.
+
+
+---
+
+Confluence documentation blueprint — CMO Purchase Order Automation (POC)
+
+> Use this as the top-level documentation space for the project. Create a new Confluence space or a parent page named CMO Purchase Order Automation (POC) and add the child pages described below.
+
+
+
+
+---
+
+Top-level page: CMO Purchase Order Automation (POC)
+
+Page Properties (metadata, for search & index)
+Use a Page Properties macro with this table (paste into Confluence Page Properties):
+
+Key	Value
+
+Project	CMO Purchase Order Automation (POC)
+Repo	bayer-int/smart-aws-bay-ch-px-ai-...
+Owner	Supply Chain Agents / Niyaz-EDHHQ
+Contact	supply-chain-dev@example.com
+Status	Draft / Review / Published
+Last updated	2025-11-07
+Environments	dev / test / prod
+Infra	Serverless (AWS SES, S3, Lambda, Step Functions, DynamoDB)
+Diagram	documentation/ch.drawio (attached)
+Tags / Labels	POC, AWS, serverless, CMO
+
+
+Page body (overview)
+
+Bayer CH Supply Chain Agents — CMO Purchase Order Automation POC
+
+Short description
+A proof-of-concept system that automates the manual processing of purchase order updates received from Contract Manufacturing Organizations (CMOs) via email.
+
+Goal
+Automate ingestion, extraction and processing of PO updates to reduce manual work and speed up updates into SAP.
+
+Quick links
+
+Architecture diagram (attached): documentation/ch.drawio
+
+Code repo: https://github.com/bayer-int/smart-aws-bay-ch-px-ai-...
+
+Runbook & On-call: (Link to runbook page)
+
+
+Overview
+This system automates the workflow that occurs when purchase order updates are received from CMOs:
+
+1. Email Reception — Emails are received and stored in S3 via AWS SES.
+
+
+2. Content Extraction — Email content (and attachments) is extracted and processed using AI (Amazon Bedrock).
+
+
+3. Planning Data Retrieval — Relevant planning information is gathered and correlated with existing systems.
+
+
+4. Criticality Assessment — Assess whether update is business-critical.
+
+
+5. Automated Processing — Either update SAP automatically or escalate to human review.
+
+
+
+(Add the Page Properties Report macro to list child pages with their metadata)
+
+
+---
+
+Child pages (suggested)
+
+1. Architecture (detailed)
+
+
+2. Workflow Details (expanded steps: Email Reception, Content Extraction, Planning Data, Criticality Check, Processing Decision)
+
+
+3. Lambda Functions (function list, runtime, permissions)
+
+
+4. Prerequisites & Setup (IAM, AWS accounts, Bedrock access)
+
+
+5. Deploy & CI/CD (Terraform, GitHub Actions)
+
+
+6. Runbook & Troubleshooting
+
+
+7. Data & Security (S3 lifecycle, encryption, PII handling)
+
+
+8. Documentation / Diagrams (drawio, sequence diagrams)
+
+
+9. Change log / Release Notes
+
+
+
+
+---
+
+Template: Architecture page (paste and adapt)
+
+Architecture
+
+Summary
+The system uses a serverless architecture on AWS consisting of:
+
+AWS SES — Receives incoming emails from CMOs.
+
+S3 — Stores email content and attachments.
+
+EventBridge — Triggers processing when new emails arrive.
+
+Lambda functions — Process different stages of the workflow.
+
+Step Functions — Orchestrates the full workflow.
+
+DynamoDB — Stores email metadata and processing state.
+
+Amazon Bedrock — AI-powered content extraction (structured PO JSON).
+
+
+Diagram
+Attach documentation/ch.drawio or embed the draw.io macro. Also include a sequence diagram showing email → S3 → EventBridge → Lambda → Step Functions → DynamoDB → SAP / email escalation.
+
+Detailed components
+
+SES — inbound rule sets, receipt rule to drop to S3.
+
+S3 bucket — naming convention, encryption (SSE-KMS), lifecycle (30 days raw, move to cold).
+
+EventBridge — rule to detect new objects or SES event.
+
+Lambda (email-reception) — extract metadata, write to DynamoDB, start state machine.
+
+Bedrock (content-extraction) — returns structured JSON.
+
+Step Functions — includes states: extract, planning-data, criticality-check, po-update/escalation.
+
+DynamoDB — table schema (PK emailId, attributes: status, timestamps, extractedJson, retries).
+
+SAP integration — connector details (API, authentication), if unavailable then email-based escalation.
+
+
+
+---
+
+Page: Workflow Details (paste)
+
+Workflow Details
+
+1. Email Reception
+
+SES receives email and stores raw email in S3.
+
+EventBridge or S3 event triggers the email-reception Lambda.
+
+email-reception extracts metadata: from, to, subject, receivedTime, message-id.
+
+Metadata saved to DynamoDB and Step Function invoked.
+
+
+2. Content Extraction
+
+Amazon Bedrock used to extract structured PO data from email body & attachments.
+
+Attachments (PDF, XLSX) are pre-processed (OCR for images, text extraction).
+
+Returns structured JSON containing PO number, line items, dates, quantities.
+
+
+Note: Emails with secure attachments (Amazon secure-attach) may need human review.
+
+3. Planning Data
+
+Retrieve correlated planning information using internal APIs (list endpoints).
+
+Add context: part master data, stock levels, lead times, related orders.
+
+
+4. Criticality Check
+
+Apply business rules to determine impact (e.g., if change affects > X quantity or critical supplier).
+
+If critical → escalate email → escalation-email Lambda; if non-critical → proceed to po-update.
+
+
+5. Processing Decision
+
+Critical updates: Escalated via email to human reviewers.
+
+Non-critical updates: Automatically update SAP via po-update function.
+
+
+
+---
+
+Page: Lambda Functions (ready table)
+
+Use a Confluence table (or the Status macro for runtime / status) — example:
+
+Function	Purpose	Runtime	Trigger	IAM roles
+
+email-reception	Processes incoming emails and extracts metadata	Python 3.13	S3 / EventBridge	lambda-email-reception-role (S3 read, DynamoDB write, Step Functions start)
+content-extraction	Extracts PO information using AI (Bedrock)	Python 3.13	Step Functions	lambda-bedrock-role (Bedrock invoke, S3 read)
+planning-data	Retrieves planning data from internal APIs	Python 3.13	Step Functions	lambda-planning-role (VPC egress, SecretsManager read)
+criticality-check	Assesses business criticality	Python 3.13	Step Functions	lambda-criticality-role
+escalation-email	Sends escalation emails for critical updates	Python 3.13	Step Functions	lambda-ses-role (SES send)
+po-update	Updates SAP system with PO changes	Python 3.13	Step Functions	lambda-sap-role (SecretsManager, API gateway)
+
+
+Recommendations
+
+Use least-privilege IAM roles.
+
+Attach logging and tracing permissions (CloudWatch, X-Ray).
+
+Add environment variables: ENV, LOG_LEVEL, S3_BUCKET, DYNAMODB_TABLE.
+
+
+
+---
+
+Page: Prerequisites & Setup
+
+Accounts & access
+
+AWS account(s): dev / test / prod
+
+Bedrock access request: request form / ticket link
+
+GitHub access: token stored in repo secrets
+
+
+Infrastructure
+
+Terraform state backend: S3 & DynamoDB (locking) — add backend file backend-smart-aws-dev.config.
+
+Example var file: smart-aws-dev.tfvars (attach an example with non-sensitive values).
+
+
+Secrets
+
+Store credentials in AWS Secrets Manager (SAP credentials, API keys).
+
+GitHub Actions: add GITHUB_TOKEN to secrets.
+
+
+Local dev
+
+Python 3.13 runtime for Lambdas.
+
+Docker (for building Lambda packages).
+
+Terraform CLI (v1.4+ recommended).
+
+
+
+---
+
+Page: Deploy & CI/CD
+
+GitHub Actions (recommended workflow)
+Create .github/workflows/deploy.yml with these important bits (short example based on your screenshot; adapt as needed):
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "dev"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TERRAFORM_VERSION: ${{ vars.TERRAFORM_VERSION || '1.4.6' }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BACKEND_CONFIG: backend-smart-aws-${{ github.event.inputs.environment }}.config
+  VAR_FILE: "smart-aws-${{ github.event.inputs.environment }}.tfvars"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Terraform Init
+        run: terraform init -backend-config=${{ env.BACKEND_CONFIG }}
+      - name: Terraform Plan
+        run: terraform plan -var-file=${{ env.VAR_FILE }}
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -var-file=${{ env.VAR_FILE }}
+
+CI checks
+
+tflint and terraform validate in PR checks.
+
+Unit tests for Lambda functions (pytest).
+
+Security scanning (Snyk / Trivy) for dependencies.
+
+
+
+---
+
+Page: Runbook & Troubleshooting
+
+Monitoring
+
+CloudWatch Logs for each Lambda.
+
+X-Ray tracing enabled for Step Functions and Lambdas.
+
+Alarms: failed invocations > threshold, Step Function failures, S3 errors.
+
+
+Common issues & fixes
+
+Bedrock extraction fails — check Bedrock quota & role permissions; re-run with debug logging.
+
+SES inbound email not delivered to S3 — verify SES receipt rules and S3 bucket policy.
+
+Lambda cannot access secret — check Secrets Manager ARN and IAM policy.
+
+
+Escalation
+
+On-call rotation: list persons and contact channels (email, pager).
+
+If SAP update fails repeatedly → quarantine the PO in DynamoDB and notify supply chain ops.
+
+
+
+---
+
+Page: Data & Security
+
+S3 encryption: SSE-KMS with CMK.
+
+S3 bucket policy: restrict to SES, Lambda, internal IPs.
+
+DynamoDB encryption and on-demand backups.
+
+Retention policies for logs and S3 emails.
+
+PII handling: redact or encrypt sensitive fields; log only non-PII or masked items.
+
+
+
+---
+
+Page: Diagrams & Documentation files
+
+Attach documentation/ch.drawio and embed it on Architecture page.
+
+Add sequence diagram (PlantUML) or Mermaid (if Confluence supports it) to show flow. Example mermaid snippet:
+
+
+sequenceDiagram
+  SES->>S3: Save email
+  S3->>EventBridge: New object event
+  EventBridge->>email-reception Lambda: Trigger
+  email-reception->>DynamoDB: Save metadata
+  email-reception->>StepFunctions: Start workflow
+  StepFunctions->>content-extraction Lambda: call
+  content-extraction->>Bedrock: extract
+  Bedrock-->>content-extraction: JSON
+  StepFunctions->>planning-data Lambda: call
+  StepFunctions->>criticality-check Lambda: call
+  alt non-critical
+    StepFunctions->>po-update Lambda: update SAP
+  else critical
+    StepFunctions->>escalation-email Lambda: send email
+  end
+
+
+---
+
+Page: Change log / Release notes
+
+Keep a short changelog for each deployment: date, PR number, summary, author, environment deployed.
+
+
+
+---
+
+Confluence best-practice tips & macros to use
+
+Page Properties / Page Properties Report — for metadata and cross-page listing.
+
+Attachments macro — central place for diagrams and sample configs.
+
+Expand macro — for long code samples (Terraform, GH Actions).
+
+Children Display macro — to show child pages at top-level.
+
+Status / Legend macros** — for state of pages (Draft/Published).
+
+Include Page macro — to reuse common content (e.g., prerequisites).
+
+Page permissions — restrict write access to owners & reviewers; grant read to stakeholders.
+
+Labels — add serverless, aws, bedrock, sage, POC to pages for findability.
+
+
+
+---
+
+Sample content you can paste into the parent page (Markdown)
+
+(If you prefer, copy the following as a ready content snippet for the top-level page.)
+
+# Bayer CH Supply Chain Agents — CMO Purchase Order Automation POC
+
+**Summary**
+A proof-of-concept system that automates processing of purchase order updates received from CMOs via email.
+
+**Workflow**
+1. Email Reception — SES → S3
+2. Content Extraction — Amazon Bedrock → structured JSON
+3. Planning Data Retrieval — internal APIs
+4. Criticality Assessment — business rules
+5. Automated Processing — SAP update or escalation
+
+**Quick Links**
+- Architecture: (link)
+- Workflow Details: (link)
+- Lambda Functions: (link)
+- Deploy & CI/CD: (link)
+- Runbook: (link)
+
+
+---
+
+Checklist to publish the Confluence documentation
+
+1. Create Space / Parent Page with title above.
+
+
+2. Add Page Properties table to the parent page.
+
+
+3. Create child pages following the names above (Architecture, Workflow, Lambdas, Deploy, Runbook).
+
+
+4. Attach diagrams and config examples (drawio, tfvars with secrets removed).
+
+
+5. Add labels: POC, serverless, AWS.
+
+
+6. Set page permissions (editors: owners/dev team; viewers: stakeholders).
+
+
+7. Add Page Properties Report to index key pages to show status and owners.
+
+
+8. Add a short announcement in your team channel with link to space and request for review.
+
+
+
+
+---
+
+Short README-style text (for quick paste into Confluence or README)
+
+Project: CMO Purchase Order Automation POC
+Purpose: Automate ingestion and processing of PO updates sent by CMOs.
+High-level architecture: SES → S3 → EventBridge → Lambda → Step Functions → DynamoDB → SAP / email.
+Primary tech: AWS Serverless (SES, S3, Lambda, Step Functions), Amazon Bedrock, Terraform, GitHub Actions.
+
+
+---
+
+If you want, I can:
+
+Convert the above into a filled Confluence page HTML/Storage format (if you paste a sample page or give me your Confluence flavor), or
+
+Produce ready-to-upload draw.io XML for the architecture diagram, or
+
+Create the GitHub Actions .yml and an example backend-*.config and smart-aws-dev.tfvars file (without secrets) for attaching to the Deploy page.
+
+
+Which of those would you like next? 
