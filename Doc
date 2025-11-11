@@ -502,3 +502,416 @@ Create the GitHub Actions .yml and an example backend-*.config and smart-aws-dev
 
 
 Which of those would you like next? 
+
+
+Deploy workflow — Step‑by‑step (Confluence documentation)
+
+Short description
+
+This document explains the GitHub Actions workflow used to deploy the Consumer Health PoC environment (Terraform + lambda builds + AWS OIDC assume-role). It is written so it can be copied into Confluence as a single page and used as runbook + reference.
+
+
+---
+
+1. Purpose
+
+Automate building artifacts (lambdas), initializing Terraform, planning and applying infrastructure changes.
+
+Use GitHub OIDC to assume an AWS role for credentials (no long‑lived AWS keys stored in GitHub).
+
+Allow manual trigger via workflow_dispatch and choose an environment to deploy (e.g. dev-...).
+
+
+
+---
+
+2. How to trigger
+
+1. From GitHub Actions UI: open the workflow and click Run workflow (manual trigger). Choose an environment input value.
+
+
+2. Can also be invoked by other workflows if merged into pipeline (not shown here).
+
+
+
+The workflow uses workflow_dispatch with an environment input (required, has a default). The environment determines variable files and the Terraform backend file used during runs.
+
+
+---
+
+3. Prerequisites (what must be configured before using this workflow)
+
+1. Secrets (Repository or Org-level)
+
+GITHUB_TOKEN (GitHub provides automatically; used by some actions)
+
+ORG_REPOS_INTERNAL_READ_ONLY (or a token that allows fetching private modules from an internal org repo) — used in git config so Terraform module sources that reference https://github.com/bayer-int will use this token.
+
+
+
+2. Repository variables / secrets required by the workflow
+
+FAWKES_AWS_DEPLOY_ROLE_ARN (stored as a variable referenced by vars.FAWKES_AWS_DEPLOY_ROLE_ARN in the workflow; this is the AWS role ARN the job will assume via OIDC).
+
+
+
+3. Terraform backend files in repository (example: backend-smart-aws-dev.config) — the workflow sets env.BACKEND_CONFIG to point to the backend config file name.
+
+
+4. TF var files (example: smart-aws-dev.tfvars) — the workflow sets env.VAR_FILE to the environment-specific tfvars file.
+
+
+5. AWS OIDC trust relationship configured on the FAWKES_AWS_DEPLOY_ROLE_ARN to allow GitHub Actions to assume it. The role should grant the permissions Terraform needs (eg create/update EC2, ALB, RDS, Lambda, S3, etc.).
+
+
+6. Module repository access: If Terraform modules are stored in a private GitHub org, the token ORG_REPOS_INTERNAL_READ_ONLY must have read access.
+
+
+
+
+---
+
+4. Workflow-level configuration (top of the YAML)
+
+name: Deploy
+
+on: workflow_dispatch.inputs.environment — manual trigger with environment input. The example default is dev-188509864883.
+
+permissions: — grants contents: read and id-token: write. The id-token: write is required to use GitHub OIDC (aws-actions/configure-aws-credentials will exchange it for AWS credentials).
+
+env: (global environment variables)
+
+TERRAFORM_VERSION (value from vars.TERRAFORM_VERSION or fallback '1.13.3')
+
+GITHUB_TOKEN (set to secrets.GITHUB_TOKEN)
+
+BACKEND_CONFIG (example: backend-smart-aws-dev.config) — file name passed to terraform init --backend-config=
+
+VAR_FILE (example: smart-aws-dev.tfvars) — var file used with terraform plan/apply
+
+
+
+> Keep these env values updated when rolling out new Terraform versions or new environment names.
+
+
+
+
+---
+
+5. Jobs: deploy (high-level)
+
+deploy is the single job in the provided workflow.
+
+name: Deploy Consumer Health PoC
+
+runs-on: [external-k8s-v2] — a custom runner label; replace with ubuntu-latest or your self-hosted runner label if necessary.
+
+timeout-minutes: 20 — total job timeout (adjust for large Terraform runs).
+
+environment: ${{ inputs.environment }} — ties GitHub environment protection rules to this run.
+
+env: sets TF_PLAN_FILE to ${{ github.sha }}.tfplan (plan filename unique per commit sha).
+
+
+
+---
+
+6. Step-by-step breakdown (each step with purpose and example commands)
+
+1. Setup git credentials so that Terraform modules can be fetched
+
+run: git config --global url."https://token:${{ secrets.ORG_REPOS_INTERNAL_READ_ONLY }}@github.com/bayer-int".insteadOf https://github.com/bayer-int
+
+Purpose: Rewrites Git URLs so that git/Terraform can fetch private modules from bayer-int using the token.
+
+
+
+2. Install Python (actions/setup-python@v6)
+
+uses: actions/setup-python@v6 with python-version: "3.13"
+
+Purpose: Required by build tools (if just or other python scripts are used).
+
+
+
+3. Install just (extractions/setup-just@v3)
+
+Purpose: just is a task runner used in the repo (e.g. just build-lambdas). Installs tooling to run repo tasks.
+
+
+
+4. Install uv (astral-sh/setup-uv@v4)
+
+Purpose: uv (likely uvicorn helper or other tooling) — included in this setup. Keep if your build tasks need it.
+
+
+
+5. Install Node (actions/setup-node@v4)
+
+with: node-version: 22
+
+Purpose: Required for frontend builds or any node-based toolchains used in lambdas or build steps.
+
+
+
+6. Install Terraform (hashicorp/setup-terraform@v3)
+
+with: terraform_version: 1.13.3 (or TERRAFORM_VERSION env variable)
+
+Purpose: Make terraform CLI available in the runner.
+
+
+
+7. Checkout repository (actions/checkout@v5)
+
+Purpose: Get the code to the runner workspace.
+
+
+
+8. Assume GitHub OIDC role (aws-actions/configure-aws-credentials@v5)
+
+with:
+
+aws-region: eu-central-1
+
+role-to-assume: ${{ vars.FAWKES_AWS_DEPLOY_ROLE_ARN }}
+
+
+Purpose: Exchange the GitHub Actions OIDC token for temporary AWS credentials so subsequent aws and terraform commands run under that role.
+
+
+
+9. Verify that GitHub OIDC role was successfully assumed
+
+run: aws sts get-caller-identity
+
+Purpose: Print the assumed role identity to the job logs — useful to verify correct role.
+
+
+
+10. Build Lambda functions
+
+working-directory: lambdas
+
+run: just build-lambdas
+
+Purpose: Build packaging artifacts for lambdas (zip files, containers, etc.) which Terraform may later reference.
+
+
+
+11. Terraform Init
+
+working-directory: configuration
+
+run: terraform init --backend-config=${{ env.BACKEND_CONFIG }}
+
+Purpose: Initialize Terraform and configure remote backend (S3/DynamoDB or other) using the provided backend config file.
+
+
+
+12. Terraform Plan
+
+working-directory: configuration
+
+run: terraform plan -out="${TF_PLAN_FILE}" -var-file=${{ env.VAR_FILE }} -input=false
+
+Purpose: Create an execution plan and write it to TF_PLAN_FILE.
+
+
+
+13. Terraform Apply
+
+working-directory: configuration
+
+run: terraform apply -input=false -auto-approve "${TF_PLAN_FILE}"
+
+Purpose: Apply the previously created plan. -auto-approve used for non-interactive automation.
+
+
+
+
+> Note: Depending on the environment, you may want to keep terraform apply manual (remove -auto-approve) or add an approval step.
+
+
+
+
+---
+
+7. Environment & GitHub Environment protections
+
+The workflow sets environment: ${{ inputs.environment }} for the job. If you use GitHub Environments you can add protection rules (webhooks, required approvers, secrets) that gate deployment to some environment names (eg prod requires manual approval). Set the environment names to match the inputs.environment values you expect your team to choose.
+
+
+---
+
+8. Required repository variables and secrets (summary)
+
+vars.FAWKES_AWS_DEPLOY_ROLE_ARN — repository variable (or org variable) storing the AWS role ARN.
+
+secrets.ORG_REPOS_INTERNAL_READ_ONLY — token for fetching private Terraform modules.
+
+secrets.GITHUB_TOKEN — usually available automatically.
+
+backend-smart-aws-dev.config — backend config file checked into the repo (but be careful not to store sensitive secrets inside it)
+
+smart-aws-dev.tfvars — terraform variable file (should NOT contain secrets; secrets should go to AWS Secrets Manager or terraform variables coming from secure stores).
+
+
+
+---
+
+9. Security considerations
+
+Do not store long-lived AWS credentials in repository secrets. Use GitHub OIDC to assume roles (which this workflow does).
+
+Token least-privilege: ORG_REPOS_INTERNAL_READ_ONLY should be read-only and restricted to the module repositories only.
+
+Backend config: Backend files can contain bucket names / region / dynamodb table names but avoid embedding secrets like access keys.
+
+Environment approvals: Protect prod environment with required reviewers in GitHub Environments.
+
+
+
+---
+
+10. Troubleshooting & common errors
+
+aws sts get-caller-identity fails: Check permissions.id-token in workflow header (must be write) and check the OIDC trust policy on the role. Confirm role-to-assume ARN is correct.
+
+Terraform module fetch fails: Confirm the git config --global url...insteadOf command uses a token with correct scope and that ORG_REPOS_INTERNAL_READ_ONLY is set in repository secrets.
+
+Backend init fails: Confirm backend config filename in env.BACKEND_CONFIG is correct and that the S3 bucket/DynamoDB table for locking exist and the assumed role has access.
+
+Timeouts: If timeout-minutes: 20 is too small for your plan/apply, increase it.
+
+Provider permission errors: Ensure the assumed role has the IAM policies required by all Terraform providers (EC2, RDS, Lambda, S3, IAM, etc.).
+
+
+
+---
+
+11. Recommendations / Enhancements
+
+1. Add explicit version variables: Use env.TERRAFORM_VERSION and reference it consistently in hashicorp/setup-terraform.
+
+
+2. Split plan and apply: Add an approval step between terraform plan and terraform apply (GitHub Approvals or a manual workflow_dispatch for apply) for critical environments.
+
+
+3. Store tfplan artifact: Upload the .tfplan as a workflow artifact so reviewers can inspect the plan before apply.
+
+
+4. Lock runner label: If not using external-k8s-v2, use ubuntu-latest or document the self‑hosted runner requirements.
+
+
+5. State drift / rollback: Add roll-back instructions and state restore process to the runbook.
+
+
+
+
+---
+
+12. Example: How to run (copyable)
+
+1. In GitHub, go to Actions → Deploy
+
+
+2. Click Run workflow
+
+
+3. Select environment: dev-188509864883 (or your environment)
+
+
+4. Click Run workflow
+
+
+
+Watch logs for: aws sts get-caller-identity and terraform init output.
+
+
+---
+
+13. Change log / maintenance
+
+v1 — Initial documentation based on provided workflow.
+
+When changing Terraform version or role ARN, update this document and repository env/vars accordingly.
+
+
+
+---
+
+14. Appendix: Key YAML fragments referenced (for quick copy)
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "dev-188509864883"
+
+env:
+  TERRAFORM_VERSION: ${{ vars.TERRAFORM_VERSION || '1.13.3' }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BACKEND_CONFIG: backend-smart-aws-dev.config
+  VAR_FILE: "smart-aws-dev.tfvars"
+
+jobs:
+  deploy:
+    runs-on: [external-k8s-v2]
+    environment: ${{ inputs.environment }}
+    steps:
+      - run: git config --global url."https://token:${{ secrets.ORG_REPOS_INTERNAL_READ_ONLY }}@github.com/bayer-int".insteadOf https://github.com/bayer-int
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+      - uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: eu-central-1
+          role-to-assume: ${{ vars.FAWKES_AWS_DEPLOY_ROLE_ARN }}
+      - run: aws sts get-caller-identity
+      - name: Terraform Init
+        working-directory: configuration
+        run: terraform init --backend-config=${{ env.BACKEND_CONFIG }}
+      - name: Terraform Plan
+        working-directory: configuration
+        run: terraform plan -out="${TF_PLAN_FILE}" -var-file=${{ env.VAR_FILE }} -input=false
+      - name: Terraform Apply
+        working-directory: configuration
+        run: terraform apply -input=false -auto-approve "${TF_PLAN_FILE}"
+
+
+---
+
+If you'd like, I can:
+
+Convert this page into Confluence storage format or HTML for direct paste.
+
+Add screenshots from the workflow YAML and annotate them.
+
+Produce a short runbook checklist tile for Confluence (checkboxes for pre-deploy steps).
+
+
+Which of these would you like next?
+
+Done — I created a Confluence-ready step-by-step document for that GitHub Actions deploy workflow and saved it as a page you can edit.
+
+If you want, I can now:
+
+Convert it to Confluence storage format (HTML/XML) for direct import,
+
+Add annotated screenshots of the YAML steps,
+
+Produce a concise pre-deploy checklist (checkbox style) for the Confluence page.
+
+
+Which would you like next?
