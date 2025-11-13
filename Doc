@@ -915,3 +915,6 @@ Produce a concise pre-deploy checklist (checkbox style) for the Confluence page.
 
 
 Which would you like next?
+
+while read -r j; do aws glue get-job --job-name "$j" --query "Job.{Name:Name,WorkerType:WorkerType,NumberOfWorkers:NumberOfWorkers,MaxCapacity:MaxCapacity}" --output json || echo "{\"Name\":\"$j\",\"error\":\"not found\"}"; done < jobs.txt > jobs-capacity.json
+
