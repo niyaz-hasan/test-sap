@@ -59,5 +59,15 @@ Observability & Metrics
 The system uses AWS cloudwatch for structured logging, tracing, and metrics.
 Each node reports execution time and status, enabling complete observability through CloudWatch
 
+In GitHub, go to Actions → Deploy
+
+
+Click Run workflow
+
+
+Select environment: dev-188509864883 (or your environment)
+
+
+Click Run workflow
 
 
