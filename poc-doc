@@ -1,0 +1,63 @@
+Order Processing Graph Lambda – Full Workflow Documentation
+
+This system processes Purchase Order (PO) emails using a 4-stage Strands Agent Graph inside a single AWS Lambda.
+
+Architecture Overview
+
+Email Reception Lambda – Collects incoming emails and stores metadata in DynamoDB + attachments in S3.
+
+Order Processing Graph Lambda – Runs the 4-stage Strands agent graph.
+
+Send Email Lambda – Sends the final confirmation email.
+
+What Is a Strands Agent Graph?
+
+“Strands” is a framework that allows you to build directed workflows with AI agents + deterministic nodes.
+
+Each node performs one job.
+
+Output flows to the next node.
+
+The graph executes inside a single Lambda runtime (no Step Functions).
+
+Shared state (invocation_state) is passed between nodes.
+
+Email Reception:
+The workflow begins when a vendor or customer sends an email containing a purchase order.
+This email is processed by the Email Reception Lambda.
+This Lambda extracts the subject, sender, and metadata, and stores them in DynamoDB.
+
+Storing Attachments
+All email attachments, such as PDF purchase orders or Excel item lists, are stored in an S3 bucket.
+This allows later nodes in the pipeline to download and analyse them
+
+Inside the Strands Agent Graph
+containing the 4 nodes: Extract → Validate → Compose → Send.
+The Order Processing Graph Lambda is built using a Strands Agent Graph.
+This graph contains four sequential nodes, each performing one specialised task
+
+Content Extraction Node
+The first node is the Content Extraction Node.
+It retrieves email metadata from DynamoDB, downloads attachments from S3, and uses Claude Sonnet 4 along with custom tools to extract structured information.
+This includes vendor details, purchase order numbers, items, and quantities
+
+Data Validation Node
+Next, the Data Validation Node verifies the extracted content.
+It checks for missing purchase order numbers, missing item details, incorrect totals, and other inconsistencies.
+The output is a detailed validation report
+
+Email Composition Node
+The Email Composition Node uses an AI agent to generate a clean, professional confirmation email.
+It produces a markdown table summarising the orders, along with a clear and polite message to the vendor.
+
+Email Sender Node
+The final node calls the existing Send Email Lambda.
+It passes the subject, the composed markdown body, and the recipient.
+This Lambda then sends the confirmation email to the vendor or customer
+
+Observability & Metrics
+The system uses AWS cloudwatch for structured logging, tracing, and metrics.
+Each node reports execution time and status, enabling complete observability through CloudWatch
+
+
+
