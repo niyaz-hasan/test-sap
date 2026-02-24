@@ -1,0 +1,219 @@
+. Objective
+Implement a reusable GitHub Actions workflow:
+Copy code
+
+.github/workflows/terraform-reusable.yaml
+Using the workflow_call trigger so that it can be invoked from environment-specific workflows (dev, qa, prod).
+The workflow must:
+Accept defined inputs
+Use shared secrets
+Perform Terraform setup and deployment steps
+Support conditional apply
+Leave placeholders for future validation/test stages
+2. Scope
+This implementation includes:
+Workflow creation using workflow_call
+Input parameter definition
+Repository checkout
+Terraform setup
+AWS authentication using OIDC role assumption
+Terraform init
+Terraform plan
+Conditional Terraform apply
+Placeholders for validation and test stages
+Out of scope:
+Cost estimation integration
+Slack notifications
+Production approval gates
+Advanced policy enforcement
+3. Workflow Architecture
+3.1 Trigger Type
+The workflow will use:
+YAML
+Copy code
+on:
+  workflow_call:
+This ensures it is only invoked by other workflows.
+3.2 Repository Structure
+Copy code
+
+.github/workflows/
+│
+├── terraform-reusable.yaml   (Reusable core workflow)
+├── dev.yaml                  (Environment workflow)
+├── qa.yaml
+├── prod.yaml
+4. Input Parameters
+The workflow supports the following inputs:
+Input Name
+Type
+Required
+Description
+site
+string
+Yes
+Application or module name
+environment
+string
+Yes
+Deployment environment
+aws_account_id
+string
+Yes
+Target AWS account
+aws_role_name
+string
+Yes
+IAM role for OIDC assumption
+dynamodb_table
+string
+Yes
+Terraform state lock table
+apply_changes
+boolean
+Yes
+Controls Terraform apply
+deploy_glue_scripts
+boolean
+No
+Controls optional Glue deployment
+5. Implementation Details
+5.1 Checkout Repository
+Pulls the source code required for Terraform execution.
+Purpose:
+Ensure workflow has latest code
+Access Terraform modules and configurations
+5.2 Terraform Setup
+Uses official HashiCorp action to:
+Install Terraform version
+Prepare CLI for execution
+5.3 AWS Authentication
+Uses:
+aws-actions/configure-aws-credentials
+OIDC role assumption
+Benefits:
+No static credentials
+Secure short-lived tokens
+Enterprise security compliant
+5.4 Terraform Init
+Initializes:
+Remote backend
+DynamoDB state locking
+AWS region configuration
+Ensures:
+State consistency
+Safe parallel deployments
+5.5 Terraform Plan
+Generates execution plan using:
+site variable
+environment variable
+Plan behavior:
+Exit code 0 → No changes
+Exit code 1 → Error
+Exit code 2 → Changes detected
+Plan output may be:
+Uploaded as artifact
+Commented on Pull Request (future enhancement)
+5.6 Conditional Apply Logic
+Terraform apply executes only when:
+apply_changes == true
+Branch condition matches (optional control)
+Plan detects changes
+This ensures:
+Pull Requests run plan only
+Main branch push can run apply
+Manual override supported
+5.7 Glue Script Deployment (Conditional)
+If:
+Copy code
+
+deploy_glue_scripts == true
+Then:
+Execute Glue deployment script
+Log execution status
+This supports hybrid infrastructure + data pipeline deployments.
+5.8 Placeholder for Validation & Test Stages
+The workflow will include placeholder sections for:
+Terraform fmt
+Terraform validate
+TFLint
+Checkov
+Custom validation scripts
+These will be implemented in future tasks.
+Purpose:
+Maintain extensibility
+Keep workflow scalable
+6. Error Handling Strategy
+The workflow will implement:
+Fail-fast execution
+Exit code evaluation for terraform plan
+Conditional pipeline termination
+Structured logging
+Terraform exit code handling:
+Exit Code
+Meaning
+Action
+0
+No changes
+Continue
+1
+Error
+Fail workflow
+2
+Changes detected
+Apply if allowed
+7. Logging Strategy
+Each stage logs:
+Environment
+Trigger type
+Apply status
+Plan result
+This ensures audit visibility and traceability.
+8. Security Considerations
+No static AWS keys
+OIDC-based role assumption
+Least privilege IAM role
+State locking enabled
+Apply controlled via input flag
+9. Example Invocation (Environment Workflow)
+Example: dev.yaml
+YAML
+Copy code
+jobs:
+  deploy:
+    uses: ./.github/workflows/terraform-reusable.yaml
+    with:
+      site: mysite
+      environment: dev
+      aws_account_id: "123456789012"
+      aws_role_name: github-oidc-role
+      dynamodb_table: terraform-lock-dev
+      apply_changes: false
+      deploy_glue_scripts: false
+    secrets: inherit
+10. Benefits of This Implementation
+Eliminates duplicated Terraform logic
+Standardizes deployment process
+Improves maintainability
+Enhances security posture
+Enables scalable CI/CD architecture
+11. Future Enhancements
+Add validation stage (fmt, validate, TFLint, Checkov)
+PR plan commenting
+Infracost integration
+Production approval gate
+Notification integration
+12. Conclusion
+This implementation establishes a centralized, reusable Terraform deployment framework that ensures:
+Standardization
+Security
+Maintainability
+Scalability
+It provides a foundation for future CI/CD enhancements and governance controls.
+If you want, I can now:
+Add a sequence diagram section
+Add architecture diagram explanation
+Add risk & mitigation section
+Make a “Management Summary” version
+Provide a more detailed technical deep-dive version
+Tell me your audience (DevOps team / Architect / Manager) and I’ll tailor it precisely 🔥
