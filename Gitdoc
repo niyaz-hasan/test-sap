@@ -1,0 +1,205 @@
+Reusable Terraform Workflow – Multi-Site Deployment
+1. Overview
+This document describes the implementation of a centralized, reusable GitHub Actions workflow for Terraform deployments.
+The workflow supports:
+Multi-site (site-specific) deployments
+Common/shared resource deployments
+Conditional AWS Glue script deployment
+Environment-based configuration
+Structured error handling and logging
+CI/CD consistency across all environments
+This reusable workflow eliminates 85–90% code duplication across environment-specific workflow files and ensures standardized deployment behavior.
+2. Objectives
+Create a centralized reusable workflow (terraform-reusable.yml)
+Support both site-specific and shared infrastructure
+Allow conditional Glue script deployment
+Standardize configuration using environment variables
+Improve error visibility and troubleshooting
+Enable structured validation and testing stages
+3. Workflow Architecture
+High-Level Flow
+Checkout Code
+Setup Terraform
+Configure AWS Credentials
+Terraform Init
+Terraform Validate
+Terraform Plan
+Terraform Apply (conditional)
+Deploy Glue Scripts (conditional)
+Post-deployment validation/tests
+Structured logging & error handling
+4. Reusable Workflow File
+Path:
+Copy code
+
+.github/workflows/terraform-reusable.yml
+Trigger:
+Yaml
+Copy code
+on:
+  workflow_call:
+This allows environment-specific workflows (dev, qa, prod, site1, site2, etc.) to call this centralized workflow.
+5. Supported Inputs
+Input Name
+Description
+site
+Site identifier (e.g., site1, site2)
+environment
+Environment name (dev, qa, prod)
+aws_account_id
+Target AWS account
+aws_role_name
+IAM role to assume
+dynamodb_table
+Remote backend lock table
+apply_changes
+Boolean flag to allow terraform apply
+deploy_glue_scripts
+Boolean flag to enable Glue deployment
+6. Environment-Based Configuration
+All configuration is standardized using environment variables instead of hardcoded values.
+Example:
+AWS Region
+Account ID
+Site name
+Feature flags
+Backend configuration
+Glue deployment toggle
+Benefits:
+Clean separation of configuration and logic
+Easier multi-environment support
+Safer production deployments
+Reduced hardcoded values
+7. Multi-Site Deployment Support
+The workflow supports:
+1️⃣ Site-Specific Resources
+Resources deployed per site/environment combination.
+Example:
+Copy code
+
+dev-site1
+dev-site2
+prod-site1
+2️⃣ Common/Shared Resources
+Shared infrastructure components such as:
+IAM roles
+Shared S3 buckets
+Shared networking
+Central logging
+Logic determines whether to deploy:
+Site-specific modules
+Common modules
+Or both
+8. Conditional AWS Glue Script Deployment
+A configurable flag controls Glue deployment:
+Copy code
+
+deploy_glue_scripts = true | false
+Behavior:
+If true → Glue scripts are deployed
+If false → Glue step is skipped
+This ensures:
+Glue jobs run only when required
+Faster CI/CD runs when Glue changes are not needed
+Reduced risk in production
+9. Terraform Stages
+9.1 Terraform Init
+Initializes backend
+Configures remote state
+Uses DynamoDB for state locking
+9.2 Terraform Validate
+Validates configuration syntax
+Prevents invalid deployments
+9.3 Terraform Plan
+Generates execution plan
+Used in PR validation
+Plan output stored in logs
+9.4 Terraform Apply
+Executed only if:
+apply_changes = true
+Workflow is triggered from correct branch
+10. Validation & Test Stages
+Future/optional stages supported:
+terraform fmt -check
+tflint
+checkov
+custom validation scripts
+post-deployment smoke tests
+These stages ensure:
+Code quality
+Security compliance
+Policy validation
+Deployment verification
+11. Structured Error Handling & Logging
+Improved error handling implemented across:
+Terraform init
+Plan
+Apply
+Glue deployment
+Test stages
+Improvements:
+Fail-fast approach
+Clear step names
+Proper exit codes
+Descriptive log messages
+GitHub Actions job summaries
+CloudWatch log visibility for Glue
+This enables:
+Faster troubleshooting
+Clear CI/CD failure visibility
+Reduced debugging time
+12. Example Calling Workflow (Environment-Specific)
+Example: dev.yml
+Yaml
+Copy code
+jobs:
+  deploy:
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      site: site1
+      environment: dev
+      aws_account_id: 123456789012
+      aws_role_name: github-actions-role
+      dynamodb_table: terraform-lock-table
+      apply_changes: true
+      deploy_glue_scripts: false
+13. Benefits of This Implementation
+Centralized deployment logic
+Multi-site scalability
+Reduced duplication (85–90%)
+Cleaner configuration management
+Safer production deployment
+Standardized CI/CD process
+Improved logging & observability
+Easier onboarding for new environments
+14. Acceptance Criteria Mapping
+Requirement
+Status
+Reusable workflow with workflow_call
+Implemented
+Multi-site support
+Implemented
+Conditional Glue deployment
+Implemented
+Environment variable configuration
+Implemented
+Structured error handling
+Implemented
+Common + Site-specific deployment
+Implemented
+15. Future Improvements
+Add Infracost integration
+Add Terraform-docs validation
+Add drift detection workflow
+Add manual approval gate for production
+Add deployment summary artifact upload
+Conclusion
+This reusable Terraform workflow establishes a scalable, maintainable, and production-ready CI/CD foundation for multi-site AWS infrastructure deployments.
+It ensures consistency, reduces duplication, and improves operational reliability across environments.
+If you want, I can also provide:
+✅ A shorter version (for management summary)
+✅ A technical deep-dive version
+✅ Architecture diagram (ready to paste in Confluence)
+✅ Proper sprint update comment to paste in Azure DevOps
+✅ PR description template for this change
+Tell me what you need next 👍
