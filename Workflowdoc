@@ -1,0 +1,70 @@
+Test Plan Output for Accuracy & Workflow Usage Documentation
+1. Test Plan Output for Accuracy
+The plan-only workflow is used to validate infrastructure changes before applying them to the environment. This ensures that proposed changes are reviewed and verified before execution.
+Objective
+Verify that the Terraform plan output correctly reflects the infrastructure changes without modifying any resources.
+Test Steps
+Trigger the plan-only workflow for the respective environment (dev, qa, prod).
+Ensure the workflow runs successfully without applying changes.
+Review the Terraform plan output generated in the pipeline logs.
+Validation Checks
+The following should be verified in the plan output:
+Resource Creation
+Confirm newly defined resources appear with + in the plan output.
+Resource Modification
+Confirm updates appear with ~ indicating configuration changes.
+Resource Deletion
+Confirm removed resources appear with -.
+No Unexpected Changes
+Ensure that unrelated infrastructure is not modified.
+Environment Variables and Secrets
+Verify that environment-specific variables are correctly picked up during execution.
+Reusable Workflow Execution
+Confirm that the plan workflow is executed via the reusable workflow configuration.
+Glue Script Deployment Disabled
+Ensure Glue script deployment steps are skipped during plan-only runs.
+Expected Outcome
+Terraform successfully generates the plan.
+No infrastructure changes are applied.
+Output clearly displays the proposed changes.
+Pipeline completes successfully.
+2. When to Use Plan vs Deploy Workflow
+Plan Workflow
+The Plan Workflow is used to preview infrastructure changes before applying them.
+When to Use
+Use the plan workflow in the following scenarios:
+Before merging infrastructure changes.
+During pull request validation.
+When reviewing Terraform changes.
+To verify configuration updates.
+To ensure environment variables and modules behave correctly.
+Behavior
+Runs terraform init
+Runs terraform plan
+Displays proposed changes
+Does NOT apply infrastructure changes
+apply_changes = false
+Deploy Workflow
+The Deploy Workflow is used to apply infrastructure changes to the target environment.
+When to Use
+Use the deploy workflow in the following scenarios:
+After Terraform plan has been reviewed and approved.
+When changes need to be applied to infrastructure.
+During scheduled or approved infrastructure releases.
+After pull request merge.
+Behavior
+Runs terraform init
+Runs terraform plan
+Runs terraform apply
+Applies infrastructure changes
+apply_changes = true
+Summary
+Workflow
+Purpose
+Changes Applied
+Plan Workflow
+Preview infrastructure changes
+❌ No
+Deploy Workflow
+Apply infrastructure changes
+✅ Yes
