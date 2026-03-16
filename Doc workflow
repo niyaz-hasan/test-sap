@@ -217,3 +217,22 @@ Add risk & mitigation section
 Make a “Management Summary” version
 Provide a more detailed technical deep-dive version
 Tell me your audience (DevOps team / Architect / Manager) and I’ll tailor it precisely 🔥
+
+
+
+
+№######################
+Integrate Terraform Plan Output into PR Validation Workflow
+Story Points
+3 (Typical estimation for workflow update + testing)
+If your team prefers smaller granularity, you can also use 2.
+Description
+Implement Terraform Plan execution as part of the Pull Request (PR) validation workflow to provide visibility into infrastructure changes during code review.
+The workflow should automatically run terraform plan for all modified components when a PR is created or updated. The generated plan output must be formatted and posted as a comment in the PR to help reviewers understand the proposed infrastructure changes before approval.
+The implementation should also ensure that plan outputs remain readable and manageable, especially for large outputs, by collapsing details where necessary.
+
+
+Implement Path-Based Change Detection for PR Validation
+Implement intelligent path-based change detection in the PR validation workflow so that validation and Terraform plan steps run only for components that have actually changed. This optimization will improve PR validation performance and reduce unnecessary compute usage in CI/CD pipelines.
+The solution should use path filtering to detect modified directories such as common-resources, sites/kun, sites/cas, and other components. Based on the detected changes, the workflow should selectively run validation and Terraform plan only for the impacted components.
+This implementation should also ensure that changes in shared modules or workflow configurations trigger validation for the relevant components.
