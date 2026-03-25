@@ -1,0 +1,97 @@
+name: Terraform Plan (PR)
+
+on:
+  pull_request:
+    branches: [dev, qa, main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.set.outputs.sites }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed sites
+        id: set
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} | grep '^sites/' | cut -d'/' -f2 | sort -u)
+
+          if git diff --name-only origin/${{ github.base_ref }} | grep -q '^modules/'; then
+            CHANGED="cas kun common"
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            CHANGED="common"
+          fi
+
+          SITES=$(printf '%s\n' $CHANGED | jq -R . | jq -s .)
+          echo "sites=$SITES" >> $GITHUB_OUTPUT
+
+  plan:
+    needs: changed
+    strategy:
+      matrix:
+        site: ${{ fromJson(needs.changed.outputs.sites) }}
+
+    uses: ./.github/workflows/terraform-reusable.yaml
+    with:
+      site: ${{ matrix.site }}
+      environment: dev
+      apply_changes: false
+
+  comment:
+    needs: [changed, plan]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download plan artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Build PR comment
+        id: body
+        run: |
+          echo "<!-- terraform-plan -->" > comment.md
+          echo "## 🚀 Terraform Plan Summary" >> comment.md
+          echo "" >> comment.md
+
+          echo "| Component | Add | Change | Destroy |" >> comment.md
+          echo "|----------|-----|--------|---------|" >> comment.md
+
+          for dir in plan-*; do
+            SITE=$(echo $dir | cut -d'-' -f2)
+
+            ADD=$(grep -oE '([0-9]+) to add' $dir/plan.txt | grep -oE '[0-9]+' || echo "0")
+            CHANGE=$(grep -oE '([0-9]+) to change' $dir/plan.txt | grep -oE '[0-9]+' || echo "0")
+            DESTROY=$(grep -oE '([0-9]+) to destroy' $dir/plan.txt | grep -oE '[0-9]+' || echo "0")
+
+            echo "| $SITE | $ADD | $CHANGE | $DESTROY |" >> comment.md
+
+            echo "" >> comment.md
+            echo "<details><summary>$SITE Full Plan</summary>" >> comment.md
+            echo "" >> comment.md
+            echo '```terraform' >> comment.md
+            cat $dir/plan.txt >> comment.md
+            echo '```' >> comment.md
+            echo "</details>" >> comment.md
+          done
+
+      - name: Find existing comment
+        id: find
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: "<!-- terraform-plan -->"
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find.outputs.comment-id }}
+          body-path: comment.md
+          edit-mode: replace
