@@ -1,3 +1,16 @@
+Currently, we have two repositories: a Glue repository and an Infrastructure repository. However, the Glue repository does not follow a standardized workflow and is not properly optimized. We are planning to migrate the Terraform code to the infra-iac repository and compare both repositories within the workspace (infra-iac and iris-glue-jobs) to identify gaps and improvements.
+The goal is to refactor and optimize the workflows and Terraform configurations in the Glue repository to align with the standards and best practices followed in the infra-iac repository.
+I need proper documentation for this refactoring and workflow optimization process, including:
+Repository comparison and gap analysis
+Workflow standardization approach
+Terraform code refactoring strategy
+Reusable workflow implementation
+Required rework and configuration changes
+Best practices to follow
+CI/CD optimization improvements
+Detailed README/documentation for implementation and migration steps
+
+
 Nice — I’ll create a complete, ready-to-paste Confluence documentation blueprint for the repo you’re showing (the “Bayer CH Supply Chain Agents - CMO Purchase Order Automation POC”). It includes a page structure, page templates, recommended macros, sample content (converted from your README screenshots), a Page Properties metadata block you can reuse, a Lambdas table, architecture & workflow diagrams guidance, and a short checklist for publishing and maintenance.
 
 You can paste the markdown below into a Confluence page (or convert to Confluence editor blocks). I label which parts are page content vs. templates vs. admin tasks so you can quickly build the documentation site.
